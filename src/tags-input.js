@@ -368,13 +368,20 @@ export default function TagsInputDirective($timeout, $document, $window, $q, tag
         .on('tag-added', () => {
           scope.newTag.text('');
         })
-        .on('tag-added tag-removed', () => {
+        .on('tag-added', () => {
           scope.tags = tagList.getItems();
           // Ideally we should be able call $setViewValue here and let it in turn call $setDirty and $validate
           // automatically, but since the model is an array, $setViewValue does nothing and it's up to us to do it.
           // Unfortunately this won't trigger any registered $parser and there's no safe way to do it.
           ngModelCtrl.$setDirty();
           focusInput();
+        })
+        .on('tag-removed', () => {
+          scope.tags = tagList.getItems();
+          // Ideally we should be able call $setViewValue here and let it in turn call $setDirty and $validate
+          // automatically, but since the model is an array, $setViewValue does nothing and it's up to us to do it.
+          // Unfortunately this won't trigger any registered $parser and there's no safe way to do it.
+          ngModelCtrl.$setDirty();
         })
         .on('invalid-tag', () => {
           scope.newTag.invalid = true;
