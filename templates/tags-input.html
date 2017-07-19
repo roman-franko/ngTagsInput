@@ -1,4 +1,4 @@
-<div class="host" tabindex="-1" ng-click="eventHandlers.host.click()" ti-transclude-append>
+<div class="host" tabindex="-1" ng-click="eventHandlers.host.click(); $event.stopPropagation();" ti-transclude-append>
   <div class="tags" ng-class="{focused: hasFocus}">
     <ul class="tag-list">
       <li class="tag-item"

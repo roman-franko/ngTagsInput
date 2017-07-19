@@ -212,6 +212,7 @@ describe('tags-input directive', () => {
 
       // Assert
       expect(input.focus).toHaveBeenCalled();
+      expect(isolateScope.tagList.index).toBe(-1);
     });
 
     it('sets focus on the input field when the container div is clicked', () => {
@@ -1100,8 +1101,8 @@ describe('tags-input directive', () => {
           // Assert
           expect(getInput().val()).toBe('');
           expect($scope.tags).toEqual([{ text: 'Tag1' }, { text: 'Tag2' }]);
-          expect(isolateScope.tagList.selected).toBe(null);
-          expect(isolateScope.tagList.index).toBe(-1);
+          expect(isolateScope.tagList.selected).toEqual({ text: 'Tag2' });
+          expect(isolateScope.tagList.index).toBe(1);
         });
 
         it('does nothing when the input field is not empty', () => {

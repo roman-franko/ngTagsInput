@@ -106,12 +106,55 @@ export default function TagsInputDirective($timeout, $document, $window, $q, tag
         });
     };
 
-    self.remove = index => {
+    self.remove = (index, backwards) => {
+      if(backwards === undefined) {
+        return self.defaultRemove(index);
+      }
+      if(backwards) {
+        return self.removeBackwards(index);
+      } else {
+        return self.removeForward(index);
+      }
+    };
+
+    self.defaultRemove = index => {
       let tag = self.items[index];
       return canRemoveTag(tag).then(() => {
         self.items.splice(index, 1);
         self.clearSelection();
         events.trigger('tag-removed', { $tag: tag });
+        return tag;
+      });
+    }
+
+    self.removeBackwards = index => {
+      let tag = self.items[index];
+      return canRemoveTag(tag).then(() => {
+        self.items.splice(index, 1);
+        if (index <= 0) {
+          index = 0;
+        } else {
+          self.index = index - 1;
+        }
+        events.trigger('tag-removed', { $tag: tag });
+        self.selected = self.items[self.index];
+        events.trigger('suggestion-selected', self.index);
+        return tag;
+      });
+    };
+
+    self.removeForward = index => {
+      let tag = self.items[index];
+      return canRemoveTag(tag).then(() => {
+        self.items.splice(index, 1);
+        if(index >= self.items.length) {
+          self.index = index - 1;
+        } else {
+          self.index = index;
+        }
+        events.trigger('tag-removed', { $tag: tag });
+        self.selected = self.items[self.index];
+        events.trigger('suggestion-selected', self.index);
         return tag;
       });
     };
@@ -136,7 +179,7 @@ export default function TagsInputDirective($timeout, $document, $window, $q, tag
       self.select(++self.index);
     };
 
-    self.removeSelected = () => self.remove(self.index);
+    self.removeSelected = (backwards) => self.remove(self.index, backwards || false);
 
     self.clearSelection = () => {
       self.selected = null;
@@ -182,6 +225,7 @@ export default function TagsInputDirective($timeout, $document, $window, $q, tag
         type: [String, 'text', validateType],
         placeholder: [String, 'Add a tag'],
         tabindex: [Number, null],
+        freezeFocusOnRemoving: [Boolean, false],
         removeTagSymbol: [String, String.fromCharCode(215)],
         replaceSpacesWithDashes: [Boolean, true],
         minLength: [Number, 3],
@@ -382,6 +426,9 @@ export default function TagsInputDirective($timeout, $document, $window, $q, tag
           // automatically, but since the model is an array, $setViewValue does nothing and it's up to us to do it.
           // Unfortunately this won't trigger any registered $parser and there's no safe way to do it.
           ngModelCtrl.$setDirty();
+          if(!scope.options.freezeFocusOnRemoving) {
+            focusInput();
+          }
         })
         .on('invalid-tag', () => {
           scope.newTag.invalid = true;
@@ -420,7 +467,11 @@ export default function TagsInputDirective($timeout, $document, $window, $q, tag
           };
 
           let shouldAdd = !options.addFromAutocompleteOnly && addKeys[key];
-          let shouldRemove = (key === tiConstants.KEYS.backspace || key === tiConstants.KEYS.delete) && tagList.selected;
+
+          let shouldRemoveByBackspace = (key === tiConstants.KEYS.backspace && scope.newTag.text().length === 0);
+          let shouldRemoveByDelete = (key === tiConstants.KEYS.delete && tagList.selected);
+
+
           let shouldEditLastTag = key === tiConstants.KEYS.backspace && scope.newTag.text().length === 0 && options.enableEditingLastTag;
           let shouldSelect = (key === tiConstants.KEYS.backspace || key === tiConstants.KEYS.left || key === tiConstants.KEYS.right) &&
             scope.newTag.text().length === 0 && !options.enableEditingLastTag;
@@ -436,11 +487,16 @@ export default function TagsInputDirective($timeout, $document, $window, $q, tag
               }
             });
           }
-          else if (shouldRemove) {
-            tagList.removeSelected();
-          }
-          else if (shouldSelect) {
-            if (key === tiConstants.KEYS.left || key === tiConstants.KEYS.backspace) {
+          else if (shouldRemoveByBackspace) {
+            if(tagList.selected) {
+              tagList.removeSelected(true);
+            } else {
+              tagList.selectPrior();
+            }
+          } else if (shouldRemoveByDelete) {
+            tagList.removeSelected(false);
+          } else if (shouldSelect) {
+            if (key === tiConstants.KEYS.left) {
               tagList.selectPrior();
             }
             else if (key === tiConstants.KEYS.right) {
@@ -448,7 +504,7 @@ export default function TagsInputDirective($timeout, $document, $window, $q, tag
             }
           }
 
-          if (shouldAdd || shouldSelect || shouldRemove || shouldEditLastTag) {
+          if (shouldAdd || shouldSelect || shouldRemoveByBackspace || shouldRemoveByDelete || shouldEditLastTag) {
             event.preventDefault();
           }
         })
